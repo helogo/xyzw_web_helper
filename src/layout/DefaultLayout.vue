@@ -41,16 +41,6 @@
             <span>Token管理</span>
           </router-link>
           <router-link
-            to="/admin/daily-tasks"
-            class="nav-item"
-            active-class="active"
-          >
-            <n-icon>
-              <Settings />
-            </n-icon>
-            <span>任务管理</span>
-          </router-link>
-          <router-link
             to="/admin/batch-daily-tasks"
             class="nav-item"
             active-class="active"
@@ -59,6 +49,16 @@
               <Layers />
             </n-icon>
             <span>批量日常</span>
+          </router-link>
+          <router-link
+            to="/admin/PushingLevels"
+            class="nav-item"
+            active-class="active"
+          >
+            <n-icon>
+              <ArrowUpCircle />
+            </n-icon>
+            <span>主线推关</span>
           </router-link>
           <router-link
             to="/admin/message-test"
@@ -76,16 +76,6 @@
             </n-icon>
             <span>实时盐场</span>
           </router-link>
-          <router-link
-            to="/admin/profile"
-            class="nav-item"
-            active-class="active"
-          >
-            <n-icon>
-              <Settings />
-            </n-icon>
-            <span>个人设置</span>
-          </router-link>
         </div>
 
         <div class="nav-user">
@@ -95,7 +85,7 @@
           <n-dropdown :options="userMenuOptions" @select="handleUserAction">
             <div class="user-info">
               <n-avatar
-                src=""
+                :src="selectedToken?.avatar || '/icons/xiaoyugan.png'"
                 size="medium"
                 fallback-src="/icons/xiaoyugan.png"
               />
@@ -167,6 +157,16 @@
           <span>批量日常</span>
         </router-link>
         <router-link
+          to="/admin/PushingLevels"
+          class="drawer-item"
+          @click="isMobileMenuOpen = false"
+        >
+          <n-icon>
+            <ArrowUpCircle />
+          </n-icon>
+          <span>主线推关</span>
+        </router-link>
+        <router-link
           to="/admin/message-test"
           class="drawer-item"
           @click="isMobileMenuOpen = false"
@@ -217,6 +217,7 @@ import {
   LockClosedSharp,LockOpen,
   Menu,
   Layers,
+  ArrowUpCircle,
 } from "@vicons/ionicons5";
 
 import { useRouter } from 'vue-router'
@@ -232,33 +233,16 @@ const isMobileMenuOpen = ref(false);
 
 const userMenuOptions = [
   {
-    label: "个人资料",
-    key: "profile",
-  },
-  {
-    label: "账户设置",
-    key: "settings",
-  },
-  {
-    type: "divider",
-  },
-  {
-    label: "退出登录",
+    label: "清除所有Token并退出",
     key: "logout",
   },
 ];
 
 // 方法
-const handleUserAction = (key) => {
+const handleUserAction = async (key) => {
   switch (key) {
-    case "profile":
-      router.push("/admin/profile");
-      break;
-    case "settings":
-      router.push("/settings");
-      break;
     case "logout":
-      tokenStore.clearAllTokens();
+      await tokenStore.clearAllTokens();
       message.success("已清除所有Token");
       router.push("/tokens");
       break;

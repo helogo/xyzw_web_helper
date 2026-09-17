@@ -39,13 +39,26 @@
         </template>
         {{ qrcodeUrl ? "刷新二维码" : "获取二维码" }}
       </n-button>
-      </div>
+    </div>
+
+    <!-- 角色命名格式配置 -->
+    <n-form :model="importForm" label-placement="top" :show-label="true" style="margin-top: 16px;">
+      <n-form-item label="角色命名格式" :show-label="true">
+        <n-input v-model:value="importForm.nameTemplate" placeholder="{name}-{index}-{id}" />
+        <template #feedback>
+          支持变量: {name}角色名, {id}角色ID, {index}角色序号, {server}区服
+        </template>
+      </n-form-item>
+    </n-form>
 
     <!-- 服务器角色列表 -->
-    <n-card v-if="serverListData && serverListData.length > 0" title="服务器角色列表"
-      style="margin-top: 16px; margin-bottom: 16px;">
-      <n-data-table :columns="columns" :data="serverListData" :pagination="{ pageSize: 5 }" />
-    </n-card>
+    <ServerRoleList
+      :data="serverListData"
+      server-column-title="区服ID"
+      max-height="50vh"
+      @add="addSelectedRole"
+      @download="handleDownload"
+    />
 
     <a-list>
       <a-list-item v-for="(role, index) in roleList" :key="index">
@@ -88,13 +101,12 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, onUnmounted, reactive, h } from "vue";
+import { ref, onMounted, onUnmounted, reactive } from "vue";
 import { Scan, Refresh, Close, CloudUpload } from "@vicons/ionicons5";
-import { NIcon, useMessage, NCard, NDataTable, NButton } from "naive-ui";
+import { NIcon, useMessage, NButton, NForm, NFormItem, NInput } from "naive-ui";
 import { getTokenId, transformToken, getServerList } from "@/utils/token";
 import useIndexedDB from "@/hooks/useIndexedDB";
 import { g_utils } from "@/utils/bonProtocol";
-import { formatPower } from "@/utils/legionWar";
 import { useTokenStore } from "@/stores/tokenStore";
 const tokenStore = useTokenStore();
 const { storeArrayBuffer } = useIndexedDB();
@@ -105,6 +117,7 @@ const importForm = reactive({
   name: "",
   server: "",
   wsUrl: "",
+  nameTemplate: "{name}-{index}-{id}",
 });
 
 // 定义事件
@@ -142,75 +155,6 @@ const roleList = ref<
     importMethod: string;
   }>
 >([]);
-
-const columns = [
-  {
-    title: "区服ID",
-    key: "serverId",
-    render(row: any) {
-      let sid = Number(row.serverId);
-      if (sid >= 2000000) sid -= 2000000;
-      else if (sid >= 1000000) sid -= 1000000;
-      return sid - 27;
-    },
-  },
-  {
-    title: "角色序号",
-    key: "roleIndex",
-    render(row: any) {
-      const sid = Number(row.serverId);
-      if (sid >= 2000000) return 2;
-      if (sid >= 1000000) return 1;
-      return 0;
-    },
-  },
-  {
-    title: "角色ID",
-    key: "roleId",
-  },
-  {
-    title: "角色名称",
-    key: "name",
-  },
-  {
-    title: "战力",
-    key: "power",
-    render(row: any) {
-      return formatPower(row.power);
-    },
-    sorter: (row1: any, row2: any) => row1.power - row2.power,
-  },
-  {
-    title: "操作",
-    key: "actions",
-    render(row: any) {
-      return h(
-        "div",
-        { style: "display: flex; gap: 8px;" },
-        [
-          h(
-            NButton,
-            {
-              size: "small",
-              type: "primary",
-              onClick: () => addSelectedRole(row),
-            },
-            { default: () => "添加" },
-          ),
-          h(
-            NButton,
-            {
-              size: "small",
-              type: "info",
-              onClick: () => handleDownload(row),
-            },
-            { default: () => "下载" },
-          ),
-        ]
-      );
-    },
-  },
-];
 
 const handleDownload = (roleInfo: any) => {
   if (!originalBinData.value) {
@@ -273,13 +217,20 @@ const addSelectedRole = async (roleInfo: any) => {
     }
     const serverNum = sid - 27;
 
+    const template = importForm.nameTemplate || "{name}-{index}-{id}";
+    const finalName = template
+      .replace(/{name}/g, () => roleName)
+      .replace(/{index}/g, () => String(roleIndex))
+      .replace(/{id}/g, () => String(roleInfo.roleId))
+      .replace(/{server}/g, () => String(serverNum) + "服");
+
     // 检查是否已存在相同配置 (根据角色名称和roleId)
     const exists = roleList.value.some(
-      (r) => r.roleId === roleInfo.roleId && r.name === roleName + `_${roleInfo.roleId}`
+      (r) => r.roleId === roleInfo.roleId && r.name === finalName
     );
 
     if (exists) {
-      message.warning(`角色 ${roleName}_${roleInfo.roleId}(${serverNum}服) 已在待添加列表中`);
+      message.warning(`角色 ${finalName} 已在待添加列表中`);
       return;
     }
 
@@ -287,14 +238,14 @@ const addSelectedRole = async (roleInfo: any) => {
       id: tokenId,
       roleId: roleInfo.roleId,
       token: roleToken,
-      name: roleName + `_${roleInfo.roleId}`,
+      name: finalName,
       server: String(serverNum) + "服",
       roleIndex: roleIndex,
       wsUrl: importForm.wsUrl || "",
       importMethod: "wxQrcode",
     });
 
-    message.success(`已添加角色: ${roleName}`);
+    message.success(`已添加角色: ${finalName}`);
 
   } catch (e: any) {
     console.error("添加角色失败", e);

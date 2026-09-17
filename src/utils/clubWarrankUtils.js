@@ -61,6 +61,7 @@ export function formatWarrankRecordsForExport(legionRankList, queryDate) {
     totalbig = 0,
     totalzhengyi = 0,
     totallong = 0,
+    totalxi = 0,
     totalweizhi = 0;
 
   legionRankList.forEach((member) => {
@@ -77,6 +78,9 @@ export function formatWarrankRecordsForExport(legionRankList, queryDate) {
         break;
       case "龙盟":
         totallong++;
+        break;
+      case "曦盟":
+        totalxi++;
         break;
       default:
         totalweizhi++;
@@ -97,6 +101,7 @@ export function formatWarrankRecordsForExport(legionRankList, queryDate) {
         "大联盟：" + totalbig + "家",
         "正义联盟：" + totalzhengyi + "家",
         "龙盟：" + totallong + "家",
+        "曦盟：" + totalxi + "家",
         "未知联盟：" + totalweizhi + "家",
       ],
     ],
@@ -139,7 +144,7 @@ const formatPower = (power) => {
 };
 
 const formatScore = (score) => {
-  return score.toFixed(0).toString();
+  return (score || 0).toFixed(0).toString();
 };
 
 const connectstr = (str1, str2, str3) => {
@@ -163,11 +168,52 @@ const allianceConfig = [
     keywords: ["梦", "梦盟", "梦想之盟"],
     value: "梦盟",
   },
+  {
+    keywords: ["曦盟"],
+    value: "曦盟",
+  },
 ];
 
+const normalizeAllianceText = (value) => {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value.map(normalizeAllianceText).filter(Boolean).join(" ");
+  }
+  if (typeof value === "object") {
+    const textKeys = [
+      "announcement",
+      "notice",
+      "content",
+      "text",
+      "value",
+      "desc",
+      "description",
+      "message",
+      "msg",
+      "name",
+      "title",
+    ];
+    const parts = textKeys
+      .map((key) => normalizeAllianceText(value[key]))
+      .filter(Boolean);
+
+    if (parts.length) return parts.join(" ");
+
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "";
+    }
+  }
+
+  return String(value);
+};
+
 export const allianceincludes = (str1) => {
+  const text = normalizeAllianceText(str1);
   const matchedItem = allianceConfig.find((item) => {
-    return item.keywords.some((keyword) => str1.includes(keyword));
+    return item.keywords.some((keyword) => text.includes(keyword));
   });
 
   return matchedItem ? matchedItem.value : "未知联盟";

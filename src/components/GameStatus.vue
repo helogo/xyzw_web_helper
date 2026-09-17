@@ -3,7 +3,11 @@
     class="game-status-container"
     :class="{
       'full-grid': activeSection === 'fightPvp',
-      'full-page-mode': activeSection === 'saltFieldGroup' || activeSection === 'peachGroup' || activeSection === 'rankGroup'
+      'full-page-mode':
+        activeSection === 'saltFieldGroup' ||
+        activeSection === 'peachGroup' ||
+        activeSection === 'rankGroup',
+      'club-mode': activeSection === 'club',
     }"
   >
     <!-- 身份牌常驻（嵌入式，Tabs 上方） -->
@@ -45,6 +49,9 @@
     <!-- 挂机状态（提取组件） -->
     <HangUpStatusCard v-show="activeSection === 'daily'" />
 
+    <!-- 无限阵容助手（提取组件） -->
+    <Unlimitedlineup v-show="activeSection === 'tools'" />
+
     <!-- 宝箱助手（提取组件） -->
     <BoxHelperCard v-show="activeSection === 'tools'" />
 
@@ -65,7 +72,6 @@
 
     <!-- 武将升级助手（提取组件） -->
     <HeroUpgradeCard v-if="activeSection === 'tools'" />
-
 
     <!-- 洗练助手（提取组件） -->
     <RefineHelperCard v-if="activeSection === 'tools'" />
@@ -164,53 +170,153 @@
 
     <!-- 盐场分组（包含盐场、周战绩、月战绩） -->
     <div class="salt-field-group" v-if="activeSection === 'saltFieldGroup'">
-      <div class="sub-nav" style="padding: 8px; background: var(--n-color); display: flex; justify-content: center;">
-        <n-tabs type="segment" animated v-model:value="saltFieldSubTab" size="small">
-           <n-tab-pane name="warrank" tab="盐场" />
-           <n-tab-pane name="weekBattle" tab="本周盐场战绩" />
-           <n-tab-pane name="monthBattle" tab="本月盐场战绩" />
+      <div
+        class="sub-nav"
+        style="
+          padding: 8px;
+          background: var(--n-color);
+          display: flex;
+          justify-content: center;
+        "
+      >
+        <n-tabs
+          type="segment"
+          animated
+          v-model:value="saltFieldSubTab"
+          size="small"
+        >
+          <n-tab-pane name="warrank" tab="盐场" />
+          <n-tab-pane name="weekBattle" tab="本周盐场战绩" />
+          <n-tab-pane name="monthBattle" tab="本月盐场战绩" />
+          <n-tab-pane name="legionWarMap" tab="盐场地图" />
+          <n-tab-pane name="legionWarStatistics" tab="盐场战况" />
         </n-tabs>
       </div>
 
-      <div class="warrank-full-container" v-if="saltFieldSubTab === 'weekBattle'">
+      <!-- 盐场匹配信息详情 样式切换 -->
+      <div
+        class="style-switch-bar"
+        v-if="saltFieldSubTab === 'warrank'"
+        style="
+          padding: 0 8px 8px;
+          background: var(--n-color);
+          display: flex;
+          justify-content: center;
+        "
+      >
+        <n-radio-group v-model:value="warrankStyle" size="small">
+          <n-radio-button value="style1">样式一</n-radio-button>
+          <n-radio-button value="style2">样式二</n-radio-button>
+        </n-radio-group>
+      </div>
+
+      <div
+        class="warrank-full-container"
+        v-if="saltFieldSubTab === 'weekBattle'"
+      >
         <ClubBattleRecords />
       </div>
 
-      <div class="warrank-full-container" v-if="saltFieldSubTab === 'warrank'">
-        <ClubWarrank />
+      <div
+        class="warrank-full-container"
+        :class="{ 'style2-container': warrankStyle === 'style2' }"
+        v-if="saltFieldSubTab === 'warrank'"
+      >
+        <ClubWarrankV2 v-if="warrankStyle === 'style2'" />
+        <ClubWarrank v-else />
       </div>
 
-      <div class="warrank-full-container" v-if="saltFieldSubTab === 'monthBattle'">
+      <div
+        class="warrank-full-container"
+        v-if="saltFieldSubTab === 'monthBattle'"
+      >
         <ClubMonthBattleRecords />
+      </div>
+
+      <div
+        class="warrank-full-container"
+        v-if="saltFieldSubTab === 'legionWarMap'"
+      >
+        <LegionWarMap />
+      </div>
+      <div
+        class="warrank-full-container"
+        v-if="saltFieldSubTab === 'legionWarStatistics'"
+      >
+        <LegionWarStatistics />
       </div>
     </div>
 
     <!-- 蟠桃园分组 -->
     <div class="peach-group" v-if="activeSection === 'peachGroup'">
-      <div class="sub-nav" style="padding: 8px; background: var(--n-color); display: flex; justify-content: center;">
-        <n-tabs type="segment" animated v-model:value="peachSubTab" size="small">
-           <n-tab-pane name="peach" tab="蟠桃园信息" />
-           <n-tab-pane name="peachBattle" tab="蟠桃园战绩" />
+      <div
+        class="sub-nav"
+        style="
+          padding: 8px;
+          background: var(--n-color);
+          display: flex;
+          justify-content: center;
+        "
+      >
+        <n-tabs
+          type="segment"
+          animated
+          v-model:value="peachSubTab"
+          size="small"
+        >
+          <n-tab-pane name="peach" tab="蟠桃园信息" />
+          <n-tab-pane name="peachBattle" tab="蟠桃园战绩" />
         </n-tabs>
+      </div>
+
+      <!-- 蟠桃园信息 样式切换 -->
+      <div
+        class="style-switch-bar"
+        v-if="peachSubTab === 'peach'"
+        style="
+          padding: 0 8px 8px;
+          background: var(--n-color);
+          display: flex;
+          justify-content: center;
+        "
+      >
+        <n-radio-group v-model:value="peachStyle" size="small">
+          <n-radio-button value="style1">样式一</n-radio-button>
+          <n-radio-button value="style2">样式二</n-radio-button>
+        </n-radio-group>
       </div>
 
       <div class="warrank-full-container" v-if="peachSubTab === 'peachBattle'">
         <PeachBattleRecords />
       </div>
 
-      <div class="warrank-full-container" v-if="peachSubTab === 'peach'">
-        <PeachInfo />
+      <div
+        class="warrank-full-container"
+        :class="{ 'style2-container': peachStyle === 'style2' }"
+        v-if="peachSubTab === 'peach'"
+      >
+        <PeachInfoV2 v-if="peachStyle === 'style2'" />
+        <PeachInfo v-else />
       </div>
     </div>
 
     <!-- 排行榜分组 -->
     <div class="rank-group" v-if="activeSection === 'rankGroup'">
-      <div class="sub-nav" style="padding: 8px; background: var(--n-color); display: flex; justify-content: center;">
+      <div
+        class="sub-nav"
+        style="
+          padding: 8px;
+          background: var(--n-color);
+          display: flex;
+          justify-content: center;
+        "
+      >
         <n-tabs type="segment" animated v-model:value="rankSubTab" size="small">
-           <n-tab-pane name="serverrank" tab="区服榜" />
-           <n-tab-pane name="toprank" tab="巅峰榜" />
-           <n-tab-pane name="topclubrank" tab="俱乐部榜" />
-           <n-tab-pane name="goldclubrank" tab="黄金积分榜" />
+          <n-tab-pane name="serverrank" tab="区服榜" />
+          <n-tab-pane name="toprank" tab="巅峰榜" />
+          <n-tab-pane name="topclubrank" tab="俱乐部榜" />
+          <n-tab-pane name="goldclubrank" tab="黄金积分榜" />
+          <n-tab-pane name="greatRouteRank" tab="伟大航路积分榜" />
         </n-tabs>
       </div>
 
@@ -228,6 +334,13 @@
 
       <div class="warrank-full-container" v-if="rankSubTab === 'goldclubrank'">
         <GoldClubList />
+      </div>
+
+      <div
+        class="warrank-full-container"
+        v-if="rankSubTab === 'greatRouteRank'"
+      >
+        <GreatRouteRankList />
       </div>
     </div>
     <!-- 切磋（提取组件） -->
@@ -253,11 +366,13 @@ import MonthlyTasksCard from "./cards/MonthlyTasksCard.vue";
 import StudyChallengeCard from "./cards/StudyChallengeCard.vue";
 import SkinChallengeCard from "./cards/SkinChallengeCard.vue";
 import ClubWarrank from "./Club/ClubWarrank.vue";
+import ClubWarrankV2 from "./Club/ClubWarrankV2.vue";
 import ClubMonthBattleRecords from "./Club/ClubMonthBattleRecords.vue";
 import ClubBattleRecords from "./Club/ClubBattleRecords.vue";
 import PeachBattleRecords from "./Club/PeachBattleRecords.vue";
 import TopRankList from "./cards/TopRankListPageCard.vue";
 import TopClubList from "./cards/TopClubListPageCard.vue";
+import GreatRouteRankList from "./Club/GreatRouteRankListPageCard.vue";
 import GoldClubList from "./cards/GoldRankListPageCard.vue";
 import FightPvp from "./cards/FightPvp.vue";
 import FightHelperCard from "./cards/FightHelperCard.vue";
@@ -269,7 +384,12 @@ import TowerStatus from "./Tower/TowerStatus.vue";
 import WeirdTowerStatus from "./Tower/WeirdTowerStatus.vue";
 import BossTower from "./Tower/BossTower.vue";
 import PeachInfo from "./Club/PeachInfo.vue";
+import PeachInfoV2 from "./Club/PeachInfoV2.vue";
 import ServerRankList from "./cards/ServerRankListPageCard.vue";
+import LegionWarMap from "./Club/LegionWarMap.vue";
+import LegionWarStatistics from "./Club/LegionWarStatistics.vue";
+import Unlimitedlineup from "./cards/Unlimitedlineup.vue";
+
 const tokenStore = useTokenStore();
 const message = useMessage();
 
@@ -283,6 +403,19 @@ const activeSection = ref("daily");
 const saltFieldSubTab = ref("warrank");
 const peachSubTab = ref("peach");
 const rankSubTab = ref("serverrank");
+
+// 盐场匹配信息详情 / 蟠桃园信息 界面样式选择（style1=原有样式，style2=移植样式）
+const warrankStyle = ref(
+  localStorage.getItem("club_warrank_style") || "style1"
+);
+const peachStyle = ref(localStorage.getItem("peach_info_style") || "style1");
+
+watch(warrankStyle, (newStyle) => {
+  localStorage.setItem("club_warrank_style", newStyle);
+});
+watch(peachStyle, (newStyle) => {
+  localStorage.setItem("peach_info_style", newStyle);
+});
 
 // 活动开放时间：仅周一到周三可参与
 const isActivityOpen = computed(() => {
@@ -671,8 +804,15 @@ onUnmounted(() => {
   max-width: 100% !important;
   grid-template-columns: 1fr;
   padding: var(--spacing-sm);
-  
+
   @media (min-width: 1400px) {
+    max-width: 100% !important;
+  }
+}
+
+.game-status-container.club-mode {
+  @media (min-width: 1400px) {
+    grid-template-columns: repeat(2, 1fr);
     max-width: 100% !important;
   }
 }
@@ -712,6 +852,19 @@ onUnmounted(() => {
   height: calc(100vh - 200px);
   min-height: 600px;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    height: calc(100vh - 180px);
+    min-height: 500px;
+  }
+}
+
+/* 样式二（移植版）容器尺寸，不影响样式一 */
+.warrank-full-container.style2-container {
+  position: relative;
+  z-index: 1;
+  height: calc(100vh - 180px);
+  min-height: 700px;
 
   @media (max-width: 768px) {
     height: calc(100vh - 180px);

@@ -42,6 +42,9 @@ const errorCodeMap = {
   7900023: "已达到使用次数上限",
   12300040: "没有空格子了",
   12300080: "未达到解锁条件",
+  200330: "无效的ID",
+  1500040: "上座塔的奖励未领取",
+  1500010: "已经全部通关",
 };
 
 // 事件节流定义表，根据实际需要调整命令和节流时间
@@ -91,15 +94,17 @@ export class CommandRegistry {
   }
 
   /** 注册命令 */
-  register(cmd, defaultBody = {}) {
+  register(cmd, defaultBody = {}, options = {}) {
     this.commands.set(cmd, (ack = 0, seq = 0, params = {}) => ({
       cmd,
       ack,
       seq,
       time: Date.now(),
-      body: this.encoder?.bon?.encode
-        ? this.encoder.bon.encode({ ...defaultBody, ...params })
-        : { ...defaultBody, ...params },
+      body: options.rawBody
+        ? { ...defaultBody, ...params }
+        : this.encoder?.bon?.encode
+          ? this.encoder.bon.encode({ ...defaultBody, ...params })
+          : { ...defaultBody, ...params },
     }));
     return this;
   }
@@ -141,7 +146,7 @@ export function registerDefaultCommands(reg) {
     .registerHeartbeat()
     // 角色/系统
     .register("role_getroleinfo", {
-      clientVersion: "2.10.3-f10a39eaa0c409f4-wx",
+      clientVersion: "2.21.2-fa918e1997301834-wx",
       inviteUid: 0,
       platform: "hortor",
       platformExt: "mix",
@@ -150,6 +155,7 @@ export function registerDefaultCommands(reg) {
     .register("system_getdatabundlever", { isAudit: false })
     .register("system_buygold", { buyNum: 1 })
     .register("system_claimhangupreward")
+    .register("system_hangupupgrade", { upgradeNum: 1 })
     .register("system_signinreward")
     .register("system_mysharecallback", { isSkipShareCard: true, type: 2 })
     .register("system_custom", { key: "", value: 0 })
@@ -169,11 +175,14 @@ export function registerDefaultCommands(reg) {
     .register("item_openbox", { itemId: 2001, number: 10 })
     .register("item_batchclaimboxpointreward")
     .register("item_openpack")
+    .register("item_consume")
     .register("rank_getserverrank")
 
     // 竞技场
     .register("arena_startarea")
     .register("fight_startlevel") // 获取 battleVersion
+    .register("fight_calcleveltime") // 计算主线关卡战斗时长
+    .register("fight_level", {}, { rawBody: true }) // 结算主线关卡
     .register("arena_getareatarget", { refresh: false })
     .register("arena_getarearank")
 
@@ -195,6 +204,8 @@ export function registerDefaultCommands(reg) {
     .register("legion_refuseapply")
     .register("legion_agree")
     .register("legion_ignore")
+    .register("legion_research")
+    .register("legion_resetresearch")
 
     .register("legion_getinfobyid")
     .register("legion_getarearank")
@@ -202,6 +213,13 @@ export function registerDefaultCommands(reg) {
     .register("legionwar_getgoldmonthwarrank")
     .register("legion_getopponent")
     .register("legion_getbattlefield")
+    .register("legion_claimpayloadtask")
+    .register("legion_claimpayloadtaskprogress")
+    .register("saltroad_getwartype")
+    .register("saltroad_getsaltroadwargrouprank")
+    .register("league_getbattlefield")
+    .register("league_getgroupopponent")
+    .register("legion_signup") // 盐场报名
 
     // 邮件
     .register("mail_getlist", { category: [0, 4, 5], lastId: 0, size: 60 })
@@ -245,8 +263,9 @@ export function registerDefaultCommands(reg) {
     .register("legionmatch_rolesignup")
     .register("legion_signin")
 
-    // 神器抽奖
+    // 钓鱼
     .register("artifact_lottery", { lotteryNumber: 1, newFree: true, type: 1 })
+    .register("artifact_exchange")
 
     // 灯神相关
     .register("genie_sweep", { genieId: 1 })
@@ -267,10 +286,20 @@ export function registerDefaultCommands(reg) {
     .register("presetteam_setteam")
     .register("presetteam_saveteam", { teamId: 1 })
     .register("role_gettargetteam")
+    .register("hero_exchange")
+    .register("hero_gointobattle")
+    .register("hero_gobackbattle")
+    .register("artifact_load")
+    .register("artifact_unload")
+    .register("lordweapon_changedefaultweapon")
+    .register("pearl_replaceskill")
+    .register("pearl_exchangeskill")
+    .register("pearl_unloadskill")
 
     // 武将升级相关
     .register("hero_heroupgradelevel") //武将升级
     .register("hero_heroupgradeorder") //武将进阶
+    .register("hero_rebirth") //武将重新birth
 
     // 升星相关
     .register("hero_heroupgradestar")
@@ -292,10 +321,17 @@ export function registerDefaultCommands(reg) {
     .register("legion_getpayloadkillrecord")
     .register("legion_getpayloadbf")
     .register("legion_getpayloadrecord")
+    .register("warguess_getrank")
+    .register("warguess_startguess")
+    .register("warguess_getguesscoinreward")
+    .register("legion_payloadsignup") // 蟠桃报名
 
     // 珍宝阁相关
     .register("collection_claimfreereward")
     .register("collection_goodslist")
+
+    // 扭蛋相关
+    .register("gacha_drawreward", { num: 1, isGroup: false })
 
     // 车辆相关
     .register("car_getrolecar")
@@ -305,6 +341,7 @@ export function registerDefaultCommands(reg) {
     .register("car_getmemberhelpingcnt")
     .register("car_getmemberrank")
     .register("car_research")
+    .register("car_claimpartconsumereward")
 
     // 功法
     .register("legacy_getinfo")
@@ -353,7 +390,21 @@ export function registerDefaultCommands(reg) {
     .register("towers_fight")
 
     //发送游戏内消息
-    .register("system_sendchatmessage");
+    .register("system_sendchatmessage")
+
+    // 盐杯竞猜
+    .register("saltcup26_getbetinfo")
+    .register("saltcup26_placebet", { matchId: "", pick: 0 })
+
+    // 换皮闯关领奖
+    .register("activity_startactegame", { actId: 0 })
+    .register("activity_actegamestageclaim", { actId: 0 })
+
+    // 逐鹿盐山竞猜
+    .register("apex_getroleinfo")
+    .register("apex_getguesslist", { scheduleId: 0, idx: 0 })
+    .register("apex_guess", { teamId: "" })
+    .register("apex_get64oppomap", { scheduleId: 0, groupId: 0 });
   registry.commands.set(
     "fight_startareaarena",
     (ack = 0, seq = 0, params = {}) => {
@@ -1014,12 +1065,21 @@ export class XyzwWebSocketClient {
       legion_getarearankresp: "legion_getarearank",
       legionwar_getgoldmonthwarrankresp: "legionwar_getgoldmonthwarrank",
       nightmare_getroleinforesp: "nightmare_getroleinfo",
+      fight_startlevelresp: "fight_startlevel",
+      fight_calcleveltimeresp: "fight_calcleveltime",
+      fight_levelresp: "fight_level",
       studyresp: "study_startgame",
       role_getroleinforesp: "role_getroleinfo",
+      apex_getroleinforesp: "apex_getroleinfo",
+      apex_getguesslistresp: "apex_getguesslist",
+      apex_guessresp: "apex_guess",
+      apex_get64oppomapresp: "apex_get64oppomap",
       hero_recruitresp: "hero_recruit",
       friend_batchresp: "friend_batch",
       system_claimhanguprewardresp: "system_claimhangupreward",
+      system_hangupupgraderesp: "system_hangupupgrade",
       item_openboxresp: ["item_openbox", "item_batchclaimboxpointreward"],
+      item_consumeresp: "item_consume",
       bottlehelper_claimresp: "bottlehelper_claim",
       bottlehelper_startresp: "bottlehelper_start",
       bottlehelper_stopresp: "bottlehelper_stop",
@@ -1051,14 +1111,30 @@ export class XyzwWebSocketClient {
       item_openpackresp: "item_openpack",
       equipment_quenchresp: "equipment_quench",
       rank_getserverrankresp: "rank_getserverrank",
+      legion_claimpayloadtaskresp: "legion_claimpayloadtask",
+      legion_claimpayloadtaskprogressresp: "legion_claimpayloadtaskprogress",
+      saltroad_getwartyperesp: "saltroad_getwartype",
+      saltroad_getsaltroadwartotalrankresp: "saltroad_getsaltroadwartotalrank",
+      warguess_getrankresp: "warguess_getrank",
+      warguess_startguessresp: "warguess_startguess",
+      warguess_getguesscoinrewardresp: "warguess_getguesscoinreward",
+      league_getbattlefieldresp: "league_getbattlefield",
+      league_getgroupopponentresp: "league_getgroupopponent",
+      legion_signupresp: "legion_signup",
+      legion_payloadsignupresp: "legion_payloadsignup",
+      pearl_replaceskillresp: "pearl_replaceskill",
+      pearl_exchangeskillresp: "pearl_exchangeskill",
+      pearl_unloadskillresp: "pearl_unloadskill",
       // 咸王宝库
       matchteam_getroleteaminforesp: "matchteam_getroleteaminfo",
       bosstower_getinforesp: "bosstower_getinfo",
-      bosstower_startbossreso: "bosstower_startboss",
+      bosstower_startbossresp: "bosstower_startboss",
       bosstower_startboxresp: "bosstower_startbox",
       discount_getdiscountinforesp: "discount_getdiscountinfo",
       // 升星相关响应映射
       hero_heroupgradestarresp: "hero_heroupgradestar",
+      hero_heroupgradelevelresp: "hero_heroupgradelevel",
+      hero_heroupgradeorderresp: "hero_heroupgradeorder",
       book_upgraderesp: "book_upgrade",
       book_claimpointrewardresp: "book_claimpointreward",
       // 军团信息
@@ -1071,6 +1147,8 @@ export class XyzwWebSocketClient {
       car_sendresp: "car_send",
       car_getmemberhelpingcntresp: "car_getmemberhelpingcnt",
       car_getmemberrankresp: "car_getmemberrank",
+      car_researchresp: "car_research",
+      car_claimpartconsumerewardresp: "car_claimpartconsumereward",
       role_gettargetteamresp: "role_gettargetteam",
       activity_warorderclaimresp: "activity_recyclewarorderrewardclaim",
       arena_getarearankresp: "arena_getarearank",
@@ -1080,6 +1158,10 @@ export class XyzwWebSocketClient {
       legacy_claimhangupresp: "legacy_claimhangup",
       legacy_sendgiftresp: "legacy_sendgift",
       legacy_getgiftsresp: "legacy_getgifts",
+      // 盐杯竞猜响应映射
+      saltcup26_getbetinforesp: "saltcup26_getbetinfo",
+      saltcup26_placebetresp: "saltcup26_placebet",
+      activity_takeegamerewardresp: "activity_startactegame",
       // 换皮闯关相关响应映射
       towers_getinforesp: "towers_getinfo",
       towers_startresp: "towers_start",
@@ -1089,10 +1171,15 @@ export class XyzwWebSocketClient {
       task_claimweekrewardresp: "task_claimweekreward",
 
       // 同步响应映射（优先级低）
+
+      legion_researchresp: ["legion_research", "legion_resetresearch"],
       syncresp: [
         "system_mysharecallback",
         "task_claimdailypoint",
         "role_commitpassword",
+        "hero_gointobattle",
+        "hero_gobackbattle",
+        "lordweapon_changedefaultweapon",
       ],
       syncrewardresp: [
         "system_buygold",
@@ -1103,6 +1190,9 @@ export class XyzwWebSocketClient {
         "genie_buysweep",
         "system_signinreward",
         "dungeon_selecthero",
+        "artifact_exchange",
+        "hero_exchange",
+        "hero_rebirth",
       ],
     };
 
@@ -1128,6 +1218,11 @@ export class XyzwWebSocketClient {
             : packet.decodedBody !== undefined
               ? packet.decodedBody
               : packet.body;
+
+        // 附加原始命令名到响应对象
+        if (responseBody && typeof responseBody === "object") {
+          responseBody._originalCmd = promiseData.originalCmd;
+        }
 
         if (packet.code === 0 || packet.code === undefined) {
           promiseData.resolve(responseBody || packet);
